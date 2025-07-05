@@ -37,10 +37,7 @@ io.on("connection", (socket) => {
   // Staff meminta peserta mengirim stream
   socket.on("request-peserta-stream", ({ peserta_id, staff_id, ujian_id }) => {
     console.log("request-peserta-stream", { peserta_id, staff_id, ujian_id });
-    const pesertaSocketId = pesertaIdToSocket[peserta_id];
-    if (pesertaSocketId) {
-      io.to(pesertaSocketId).emit("staff-request-stream", { staff_id });
-    }
+    io.to(peserta_id).emit("staff-request-stream", { staff_id });
   });
 
   // Peserta mengirim signal ke staff
