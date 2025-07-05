@@ -6,20 +6,23 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // izinkan semua origin (untuk dev)
+    origin: "*", // izinkan semua origin (untuk dev/testing)
     methods: ["GET", "POST"]
   }
 });
 
-const PORT = process.env.PORT || 3000; // gunakan port dari cPanel
+const PORT = process.env.PORT || 3000; // Railway akan set PORT
 
-// Mapping user id ke socket id jika perlu
+// Mapping user id ke socket id
 const pesertaIdToSocket = {};
 const staffIdToSocket = {};
 
 io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+
   // Join ke room ujian tertentu
   socket.on("join-ujian-room", ({ ujian_id, peserta_id, staff }) => {
+    console.log("join-ujian-room", { ujian_id, peserta_id, staff });
     socket.join(`ujian_${ujian_id}`);
     if (peserta_id) {
       socket.peserta_id = peserta_id;
@@ -33,8 +36,7 @@ io.on("connection", (socket) => {
 
   // Staff meminta peserta mengirim stream
   socket.on("request-peserta-stream", ({ peserta_id, staff_id, ujian_id }) => {
-    // staff_id di sini adalah socket.id staff
-    // Kirim hanya ke peserta yang diminta
+    console.log("request-peserta-stream", { peserta_id, staff_id, ujian_id });
     const pesertaSocketId = pesertaIdToSocket[peserta_id];
     if (pesertaSocketId) {
       io.to(pesertaSocketId).emit("staff-request-stream", { staff_id });
@@ -43,7 +45,7 @@ io.on("connection", (socket) => {
 
   // Peserta mengirim signal ke staff
   socket.on("peserta-signal", ({ to, from, signal, ujian_id }) => {
-    // to = staff socket.id
+    console.log("peserta-signal", { to, from, ujian_id });
     if (to) {
       io.to(to).emit("peserta-signal", { from: socket.id, signal });
     }
@@ -51,19 +53,19 @@ io.on("connection", (socket) => {
 
   // Staff mengirim signal balasan ke peserta
   socket.on("staff-signal", ({ to, from, signal, ujian_id }) => {
-    // to = peserta socket.id
+    console.log("staff-signal", { to, from, ujian_id });
     if (to) {
       io.to(to).emit("staff-signal", { from: socket.id, signal });
     }
   });
 
   socket.on("disconnect", () => {
-    // Bersihkan mapping jika socket disconnect
+    console.log("Client disconnected:", socket.id);
     if (socket.peserta_id) delete pesertaIdToSocket[socket.peserta_id];
     if (socket.isStaff) delete staffIdToSocket[socket.id];
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log("Signaling server running on port", PORT);
 }); 
